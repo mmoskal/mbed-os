@@ -1,22 +1,24 @@
 /**
-  *************** (C) COPYRIGHT 2016 STMicroelectronics ************************
-  * @file      startup_stm32f103xb.s
+  *************** (C) COPYRIGHT 2017 STMicroelectronics ************************
+  * @file      startup_stm32f103xe.s
   * @author    MCD Application Team
-  * @version   V4.1.0
-  * @date      29-April-2016
-  * @brief     STM32F103xB Devices vector table for Atollic toolchain.
+  * @version   V4.2.0
+  * @date      31-March-2017
+  * @brief     STM32F103xE Devices vector table for Atollic toolchain.
   *            This module performs:
   *                - Set the initial SP
   *                - Set the initial PC == Reset_Handler,
   *                - Set the vector table entries with the exceptions ISR address
   *                - Configure the clock system   
+  *                - Configure external SRAM mounted on STM3210E-EVAL board
+  *                  to be used as data memory (optional, to be enabled by user)
   *                - Branches to main in the C library (which eventually
   *                  calls main()).
   *            After Reset the Cortex-M3 processor is in Thread mode,
   *            priority is Privileged, and the Stack is set to Main.
   ******************************************************************************
   *
-  * <h2><center>&copy; COPYRIGHT(c) 2016 STMicroelectronics</center></h2>
+  * <h2><center>&copy; COPYRIGHT(c) 2017 STMicroelectronics</center></h2>
   *
   * Redistribution and use in source and binary forms, with or without modification,
   * are permitted provided that the following conditions are met:
@@ -58,8 +60,12 @@ defined in linker script */
 .word _sdata
 /* end address for the .data section. defined in linker script */
 .word _edata
+/* start address for the .bss section. defined in linker script */
+.word _sbss
+/* end address for the .bss section. defined in linker script */
+.word _ebss
 
-.equ  BootRAM, 0xF108F85F
+.equ  BootRAM,        0xF1E0F85F
 /**
  * @brief  This is the code that gets called when the processor first
  *          starts execution following a reset event. Only the absolutely
@@ -73,8 +79,6 @@ defined in linker script */
   .weak Reset_Handler
   .type Reset_Handler, %function
 Reset_Handler:
-  ldr   r0, =_estack
-  mov   sp, r0          /* set stack pointer */
 
 /* Copy the data segment initializers from flash to SRAM */
   movs r1, #0
@@ -92,19 +96,25 @@ LoopCopyDataInit:
   adds r2, r0, r1
   cmp r2, r3
   bcc CopyDataInit
+  ldr r2, =_sbss
+  b LoopFillZerobss
+/* Zero fill the bss segment. */
+FillZerobss:
+  movs r3, #0
+  str r3, [r2], #4
+
+LoopFillZerobss:
+  ldr r3, = _ebss
+  cmp r2, r3
+  bcc FillZerobss
 
 /* Call the clock system intitialization function.*/
     bl  SystemInit
 /* Call static constructors */
-  //bl __libc_init_array
+    bl __libc_init_array
 /* Call the application's entry point.*/
-  //bl  main
-  bl _start
-
-LoopForever:
-  b LoopForever
-
-
+  bl main
+  bx lr
 .size Reset_Handler, .-Reset_Handler
 
 /**
@@ -193,6 +203,23 @@ g_pfnVectors:
   .word EXTI15_10_IRQHandler
   .word RTC_Alarm_IRQHandler
   .word USBWakeUp_IRQHandler
+  .word TIM8_BRK_IRQHandler
+  .word TIM8_UP_IRQHandler
+  .word TIM8_TRG_COM_IRQHandler
+  .word TIM8_CC_IRQHandler
+  .word ADC3_IRQHandler
+  .word FSMC_IRQHandler
+  .word SDIO_IRQHandler
+  .word TIM5_IRQHandler
+  .word SPI3_IRQHandler
+  .word UART4_IRQHandler
+  .word UART5_IRQHandler
+  .word TIM6_IRQHandler
+  .word TIM7_IRQHandler
+  .word DMA2_Channel1_IRQHandler
+  .word DMA2_Channel2_IRQHandler
+  .word DMA2_Channel3_IRQHandler
+  .word DMA2_Channel4_5_IRQHandler
   .word 0
   .word 0
   .word 0
@@ -200,8 +227,45 @@ g_pfnVectors:
   .word 0
   .word 0
   .word 0
-  .word BootRAM          /* @0x108. This is for boot in RAM mode for
-                            STM32F10x Medium Density devices. */
+  .word 0
+  .word 0
+  .word 0
+  .word 0
+  .word 0
+  .word 0
+  .word 0
+  .word 0
+  .word 0
+  .word 0
+  .word 0
+  .word 0
+  .word 0
+  .word 0
+  .word 0
+  .word 0
+  .word 0
+  .word 0
+  .word 0
+  .word 0
+  .word 0
+  .word 0
+  .word 0
+  .word 0
+  .word 0
+  .word 0
+  .word 0
+  .word 0
+  .word 0
+  .word 0
+  .word 0
+  .word 0
+  .word 0
+  .word 0
+  .word 0
+  .word 0
+  .word 0
+  .word BootRAM       /* @0x1E0. This is for boot in RAM mode for
+                         STM32F10x High Density devices. */
 
 /*******************************************************************************
 *
@@ -367,5 +431,55 @@ g_pfnVectors:
   .weak USBWakeUp_IRQHandler
   .thumb_set USBWakeUp_IRQHandler,Default_Handler
 
-/************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/
+  .weak TIM8_BRK_IRQHandler
+  .thumb_set TIM8_BRK_IRQHandler,Default_Handler
 
+  .weak TIM8_UP_IRQHandler
+  .thumb_set TIM8_UP_IRQHandler,Default_Handler
+
+  .weak TIM8_TRG_COM_IRQHandler
+  .thumb_set TIM8_TRG_COM_IRQHandler,Default_Handler
+
+  .weak TIM8_CC_IRQHandler
+  .thumb_set TIM8_CC_IRQHandler,Default_Handler
+
+  .weak ADC3_IRQHandler
+  .thumb_set ADC3_IRQHandler,Default_Handler
+
+  .weak FSMC_IRQHandler
+  .thumb_set FSMC_IRQHandler,Default_Handler
+
+  .weak SDIO_IRQHandler
+  .thumb_set SDIO_IRQHandler,Default_Handler
+
+  .weak TIM5_IRQHandler
+  .thumb_set TIM5_IRQHandler,Default_Handler
+
+  .weak SPI3_IRQHandler
+  .thumb_set SPI3_IRQHandler,Default_Handler
+
+  .weak UART4_IRQHandler
+  .thumb_set UART4_IRQHandler,Default_Handler
+
+  .weak UART5_IRQHandler
+  .thumb_set UART5_IRQHandler,Default_Handler
+
+  .weak TIM6_IRQHandler
+  .thumb_set TIM6_IRQHandler,Default_Handler
+
+  .weak TIM7_IRQHandler
+  .thumb_set TIM7_IRQHandler,Default_Handler
+
+  .weak DMA2_Channel1_IRQHandler
+  .thumb_set DMA2_Channel1_IRQHandler,Default_Handler
+
+  .weak DMA2_Channel2_IRQHandler
+  .thumb_set DMA2_Channel2_IRQHandler,Default_Handler
+
+  .weak DMA2_Channel3_IRQHandler
+  .thumb_set DMA2_Channel3_IRQHandler,Default_Handler
+
+  .weak DMA2_Channel4_5_IRQHandler
+  .thumb_set DMA2_Channel4_5_IRQHandler,Default_Handler
+
+/************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/
